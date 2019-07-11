@@ -12,10 +12,16 @@ const {
 // Keep a global reference of the window object, if you don't, the window will
 // be closed automatically when the JavaScript object is garbage collected.
 let mainWindow;
-
+const notifiations = {};
 function createWindow() {
     // Create the browser window.
-    mainWindow = new BrowserWindow({ width: 1360, height: 800 });
+    mainWindow = new BrowserWindow({
+      width: 1360,
+      height: 800,
+      webPreferences: {
+        nodeIntegration: true
+      }
+    });
 
     // Load the index.html of the app.
     // Most examples use __dirname instead of process.cwd().
@@ -36,26 +42,35 @@ function createWindow() {
         // when you should delete the corresponding element.
         mainWindow = null;
     });
-
+    mainWindow.webContents.on('crashed', (event, killed) => {
+      if (mainWindow.isDestroyed()) {
+        return;
+      }
+      mainWindow.reload();
+    });
     function showNotification(options, renderProcess) {
         if (Notification && Notification.isSupported()) {
             console.log('Triggering notification');
-            const notification = new Notification(options);
-            notification.show();
-            notification.on('show', () => {
+            const id = Symbol();
+            //options.actions = [NotificationAction({type: 'button', text: 'test'})];
+            options.hasReply = true;
+            options.replyPlaceholder = 'test';
+            notifiations[id] = new Notification(options);
+            notifiations[id].show();
+            notifiations[id].on('show', () => {
               console.log('Showing OS notification via default electron code');
             });
-            notification.on('click', e => {
+            notifiations[id].on('click', e => {
               console.log('OS notification was clicked');
               renderProcess.send('show-alert');
             });
-            notification.on('close', e => {
+            notifiations[id].on('close', e => {
               console.log('OS notification was closed');
             });
-            notification.on('action', e => {
+            notifiations[id].on('action', e => {
               console.info('OS notification action was triggered');
             });
-            notification.on('reply', e => {
+            notifiations[id].on('reply', e => {
               console.log('OS notification action was reply');
             });
         }
